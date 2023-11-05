@@ -15,7 +15,7 @@ DB_IDLE_TIME=90
 
 DB_INIT_USER=user
 DB_INIT_PASSWORD=password
-DB_INIT_PARAMS=parseTime\=true&&multiStatements\=true
+DB_INIT_PARAMS=parseTime\=true&multiStatements\=true
 
 DB_USER=user
 DB_PASSWORD=password
