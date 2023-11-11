@@ -349,5 +349,13 @@ func (h *Page) SelectNext(rows *[]any) error {
 
 // ================================================================
 func (h *Page) Close() {
-	h.stmt.Close()
+	if h.stmt != nil {
+		h.stmt.Close()
+	}
+}
+
+// ================================================================
+type Paging struct {
+	Previous *string `json:"previous,omitempty"`
+	Next     *string `json:"next,omitempty"`
 }
