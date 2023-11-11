@@ -131,7 +131,7 @@ func (e Mysql) DBInit(sqlDir string, sortedFiles []string) error {
 	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS `" + e.ModeDefault.Name + "` COLLATE 'utf8mb4_unicode_ci' CHARACTER SET 'utf8mb4';"); err != nil {
 		return err
 	} else {
-		db.Exec(`USE ` + e.ModeDefault.Name + `;`)
+		db.Exec("USE `" + e.ModeDefault.Name + "`;")
 	}
 
 	if len(sortedFiles) > 0 {
