@@ -3,7 +3,10 @@ package mysql
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"net/url"
 	"reflect"
+	"strconv"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -11,11 +14,6 @@ import (
 // ================================================================
 //
 // ================================================================
-const (
-	KeyLimit  = "l"
-	KeyOffset = "o"
-)
-
 var (
 	ErrInvalidContainer = errors.New("Invalid container")
 	ErrInvalidLimit     = errors.New("Invalid limit")
@@ -44,9 +42,11 @@ type Page struct {
 	next        int
 	hasPrevious bool
 	hasNext     bool
+	KeyLimit    string
+	KeyOffset   string
 }
 
-func NewPageHandler(db *sqlx.DB, query string) (*Page, error) {
+func NewPageHandler(db *sqlx.DB, query string, keyLimit, keyOffset string) (*Page, error) {
 	stmt, err := db.PrepareNamed(query)
 	if err != nil {
 		return nil, err
@@ -60,11 +60,13 @@ func NewPageHandler(db *sqlx.DB, query string) (*Page, error) {
 		next:        0,
 		hasPrevious: false,
 		hasNext:     false,
+		KeyLimit:    keyLimit,
+		KeyOffset:   keyOffset,
 	}, nil
 }
 
 func (h *Page) Select(rows any, args map[string]any) error {
-	val, ok := args[KeyLimit]
+	val, ok := args[h.KeyLimit]
 	if ok {
 		if limit, ok := val.(int); !ok {
 			return ErrInvalidLimit
@@ -73,18 +75,18 @@ func (h *Page) Select(rows any, args map[string]any) error {
 		} else {
 			if h.args == nil {
 				h.limit = limit
-				args[KeyLimit] = limit + 1
+				args[h.KeyLimit] = limit + 1
 			}
 		}
 
-		if val, ok := args[KeyOffset]; ok {
+		if val, ok := args[h.KeyOffset]; ok {
 			if offset, ok := val.(int); !ok {
 				return ErrInvalidOffset
 			} else if offset < 0 {
 				return ErrInvalidOffset
 			}
 		} else {
-			args[KeyOffset] = 0
+			args[h.KeyOffset] = 0
 		}
 
 		h.args = args
@@ -95,7 +97,7 @@ func (h *Page) Select(rows any, args map[string]any) error {
 	}
 
 	if h.args != nil {
-		offset := h.args[KeyOffset].(int)
+		offset := h.args[h.KeyOffset].(int)
 		// calc previous
 		if offset > 0 {
 			if h.previous = offset - h.limit; h.previous < 0 {
@@ -147,7 +149,7 @@ func (h Page) GetPrevious() (int, int, error) {
 
 func (h *Page) SelectPrevious(rows *[]any) error {
 	if h.hasPrevious {
-		h.args[KeyOffset] = h.previous
+		h.args[h.KeyOffset] = h.previous
 		return h.Select(rows, h.args)
 	}
 
@@ -169,7 +171,7 @@ func (h Page) GetNext() (int, int, error) {
 
 func (h *Page) SelectNext(rows *[]any) error {
 	if h.hasNext {
-		h.args[KeyOffset] = h.next
+		h.args[h.KeyOffset] = h.next
 		return h.Select(rows, h.args)
 	}
 
@@ -185,6 +187,58 @@ func (h *Page) Close() {
 
 // ================================================================
 type Paging struct {
-	Previous *string `json:"previous,omitempty"`
-	Next     *string `json:"next,omitempty"`
+	*Page
+	Previous *string        `json:"previous,omitempty"`
+	Next     *string        `json:"next,omitempty"`
+	endpoint *url.URL       `json:"-"`
+	filters  map[string]any `json:"-"`
+}
+
+func NewPaging(db *sqlx.DB, query string, endpoint *url.URL, keyLimit, keyOffset string, filters map[string]any) (*Paging, error) {
+	page, err := NewPageHandler(db, query, keyLimit, keyOffset)
+	if err != nil {
+		return nil, err
+	}
+
+	delete(filters, keyLimit)
+	delete(filters, keyOffset)
+
+	return &Paging{
+		Page:     page,
+		endpoint: endpoint,
+		filters:  filters,
+	}, nil
+}
+
+func (p *Paging) Select(rows *[]any, args map[string]any) error {
+	if err := p.Page.Select(rows, args); err != nil {
+		return err
+	}
+	defer p.Page.Close()
+	p.setPagingUrl()
+
+	return nil
+}
+
+func (p *Paging) setPagingUrl() {
+	q := p.endpoint.Query()
+	for k, v := range p.filters {
+		q.Set(k, fmt.Sprintf("%v", v))
+	}
+
+	if limit, offset, err := p.GetPrevious(); err == nil {
+		q.Set(p.Page.KeyLimit, strconv.Itoa(limit))
+		q.Set(p.Page.KeyOffset, strconv.Itoa(offset))
+		p.endpoint.RawQuery = q.Encode()
+		urlstring := p.endpoint.String()
+		p.Previous = &urlstring
+	}
+
+	if limit, offset, err := p.GetNext(); err == nil {
+		q.Set(p.Page.KeyLimit, strconv.Itoa(limit))
+		q.Set(p.Page.KeyOffset, strconv.Itoa(offset))
+		p.endpoint.RawQuery = q.Encode()
+		urlstring := p.endpoint.String()
+		p.Next = &urlstring
+	}
 }
