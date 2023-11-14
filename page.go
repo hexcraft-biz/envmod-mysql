@@ -75,11 +75,13 @@ func (h *Page) Select(rows any, args map[string]any) error {
 	if ok {
 		if limit, ok := val.(int); !ok {
 			return ErrInvalidLimit
-		} else if limit < 1 {
-			return ErrInvalidLimit
 		} else {
 			if h.args == nil {
-				h.limit = limit
+				if limit < 1 {
+					h.limit = 1
+				} else {
+					h.limit = limit
+				}
 				args[h.KeyLimit] = limit + 1
 			}
 		}
