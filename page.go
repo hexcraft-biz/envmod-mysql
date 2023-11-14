@@ -39,6 +39,20 @@ type ListQueryParamInterface interface {
 	KeyOffset() string
 }
 
+// ================================================================
+type ListQueryParams struct {
+	Limit  int `form:"l" binding:"number,min=1"`
+	Offset int `form:"o" binding:"number,min=0"`
+}
+
+func (qp ListQueryParams) KeyLimit() string {
+	return "l"
+}
+
+func (qp ListQueryParams) KeyOffset() string {
+	return "o"
+}
+
 type Page struct {
 	stmt        *sqlx.NamedStmt
 	args        map[string]any
