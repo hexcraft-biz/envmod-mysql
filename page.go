@@ -232,10 +232,23 @@ func (p *Paging) Select(rows *[]any, args map[string]any) error {
 	return nil
 }
 
+func ToStringDeep(a any) string {
+	val := reflect.ValueOf(a)
+	for val.Kind() == reflect.Ptr && !val.IsNil() {
+		val = val.Elem()
+	}
+
+	if val.Kind() == reflect.Ptr && val.IsNil() {
+		return ""
+	}
+
+	return fmt.Sprintf("%v", val.Interface())
+}
+
 func (p *Paging) setPagingUrl() {
 	q := p.endpoint.Query()
 	for k, v := range p.filters {
-		q.Set(k, fmt.Sprintf("%v", v))
+		q.Set(k, ToStringDeep(v))
 	}
 
 	if limit, offset, err := p.GetPrevious(); err == nil {
