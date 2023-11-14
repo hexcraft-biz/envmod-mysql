@@ -34,6 +34,11 @@ type PageHandler interface {
 	Close()
 }
 
+type ListQueryParamInterface interface {
+	KeyLimit() string
+	KeyOffset() string
+}
+
 type Page struct {
 	stmt        *sqlx.NamedStmt
 	args        map[string]any
@@ -46,7 +51,7 @@ type Page struct {
 	KeyOffset   string
 }
 
-func NewPageHandler(db *sqlx.DB, query string, keyLimit, keyOffset string) (*Page, error) {
+func NewPageHandler(db *sqlx.DB, query string, params ListQueryParamInterface) (*Page, error) {
 	stmt, err := db.PrepareNamed(query)
 	if err != nil {
 		return nil, err
@@ -60,8 +65,8 @@ func NewPageHandler(db *sqlx.DB, query string, keyLimit, keyOffset string) (*Pag
 		next:        0,
 		hasPrevious: false,
 		hasNext:     false,
-		KeyLimit:    keyLimit,
-		KeyOffset:   keyOffset,
+		KeyLimit:    params.KeyLimit(),
+		KeyOffset:   params.KeyOffset(),
 	}, nil
 }
 
@@ -186,6 +191,11 @@ func (h *Page) Close() {
 }
 
 // ================================================================
+type PagingQueryParamInterface interface {
+	ListQueryParamInterface
+	Filters() map[string]any
+}
+
 type Paging struct {
 	*Page
 	Previous *string        `json:"previous,omitempty"`
@@ -194,14 +204,16 @@ type Paging struct {
 	filters  map[string]any `json:"-"`
 }
 
-func NewPaging(db *sqlx.DB, query string, endpoint *url.URL, keyLimit, keyOffset string, filters map[string]any) (*Paging, error) {
-	page, err := NewPageHandler(db, query, keyLimit, keyOffset)
+func NewPaging(db *sqlx.DB, query string, endpoint *url.URL, params PagingQueryParamInterface) (*Paging, error) {
+	page, err := NewPageHandler(db, query, params)
 	if err != nil {
 		return nil, err
 	}
 
-	delete(filters, keyLimit)
-	delete(filters, keyOffset)
+	filters := params.Filters()
+
+	delete(filters, page.KeyLimit)
+	delete(filters, page.KeyOffset)
 
 	return &Paging{
 		Page:     page,
