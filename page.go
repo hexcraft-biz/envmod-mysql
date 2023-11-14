@@ -53,6 +53,13 @@ func (qp ListQueryParams) KeyOffset() string {
 	return "o"
 }
 
+func (qp ListQueryParams) Filters() map[string]any {
+	return map[string]any{
+		"l": qp.Limit,
+		"o": qp.Offset,
+	}
+}
+
 type Page struct {
 	stmt        *sqlx.NamedStmt
 	args        map[string]any
