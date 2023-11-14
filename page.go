@@ -21,12 +21,6 @@ var (
 )
 
 // ================================================================
-type ListQueryParamsInterface interface {
-	KeyLimit() string
-	KeyOffset() string
-}
-
-// ================================================================
 type ListArgsInterface interface {
 	Subset() (int, int)
 	SetLimit(int)
@@ -36,14 +30,6 @@ type ListArgsInterface interface {
 type ListQueryParams struct {
 	Limit  int `form:"l" binding:"number,min=1" db:"l"`
 	Offset int `form:"o" binding:"number,min=0" db:"o"`
-}
-
-func (qp ListQueryParams) KeyLimit() string {
-	return "l"
-}
-
-func (qp ListQueryParams) KeyOffset() string {
-	return "o"
 }
 
 func (qp ListQueryParams) Subset() (int, int) {
@@ -56,6 +42,10 @@ func (qp *ListQueryParams) SetLimit(limit int) {
 
 func (qp *ListQueryParams) SetOffset(offset int) {
 	qp.Offset = offset
+}
+
+func (qp ListQueryParams) SubsetKeys() (string, string) {
+	return "l", "o"
 }
 
 func (qp ListQueryParams) Filters() map[string]string {
@@ -83,11 +73,9 @@ type Page struct {
 	next        int
 	hasPrevious bool
 	hasNext     bool
-	KeyLimit    string
-	KeyOffset   string
 }
 
-func NewPageHandler(db *sqlx.DB, query string, params ListQueryParamsInterface) (*Page, error) {
+func NewPageHandler(db *sqlx.DB, query string) (*Page, error) {
 	stmt, err := db.PrepareNamed(query)
 	if err != nil {
 		return nil, err
@@ -101,8 +89,6 @@ func NewPageHandler(db *sqlx.DB, query string, params ListQueryParamsInterface) 
 		next:        0,
 		hasPrevious: false,
 		hasNext:     false,
-		KeyLimit:    params.KeyLimit(),
-		KeyOffset:   params.KeyOffset(),
 	}, nil
 }
 
@@ -212,7 +198,7 @@ func (h *Page) Close() {
 
 // ================================================================
 type PagingQueryParamInterface interface {
-	ListQueryParamsInterface
+	SubsetKeys() (string, string)
 	Filters() map[string]string
 }
 
@@ -225,7 +211,7 @@ type Paging struct {
 }
 
 func NewPaging(db *sqlx.DB, query string, endpoint *url.URL, params PagingQueryParamInterface) (*Paging, error) {
-	page, err := NewPageHandler(db, query, params)
+	page, err := NewPageHandler(db, query)
 	if err != nil {
 		return nil, err
 	}
@@ -242,34 +228,32 @@ func (p *Paging) Select(rows *[]any, args ListArgsInterface) error {
 	if err := p.Page.Select(rows, args); err != nil {
 		return err
 	}
-	p.setPagingUrl()
 
-	return nil
-}
-
-func (p *Paging) setPagingUrl() {
 	q := p.endpoint.Query()
 	filters := p.queryParams.Filters()
-	delete(filters, p.queryParams.KeyLimit())
-	delete(filters, p.queryParams.KeyOffset())
+	keyLimit, keyOffset := p.queryParams.SubsetKeys()
+	delete(filters, keyLimit)
+	delete(filters, keyOffset)
 
 	for k, v := range filters {
 		q.Set(k, v)
 	}
 
 	if limit, offset, err := p.GetPrevious(); err == nil {
-		q.Set(p.Page.KeyLimit, strconv.Itoa(limit))
-		q.Set(p.Page.KeyOffset, strconv.Itoa(offset))
+		q.Set(keyLimit, strconv.Itoa(limit))
+		q.Set(keyOffset, strconv.Itoa(offset))
 		p.endpoint.RawQuery = q.Encode()
 		urlstring := p.endpoint.String()
 		p.Previous = &urlstring
 	}
 
 	if limit, offset, err := p.GetNext(); err == nil {
-		q.Set(p.Page.KeyLimit, strconv.Itoa(limit))
-		q.Set(p.Page.KeyOffset, strconv.Itoa(offset))
+		q.Set(keyLimit, strconv.Itoa(limit))
+		q.Set(keyOffset, strconv.Itoa(offset))
 		p.endpoint.RawQuery = q.Encode()
 		urlstring := p.endpoint.String()
 		p.Next = &urlstring
 	}
+
+	return nil
 }
