@@ -3,7 +3,6 @@ package mysql
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -53,10 +52,10 @@ func (qp ListQueryParams) KeyOffset() string {
 	return "o"
 }
 
-func (qp ListQueryParams) Filters() map[string]any {
-	return map[string]any{
-		"l": qp.Limit,
-		"o": qp.Offset,
+func (qp ListQueryParams) Filters() map[string]string {
+	return map[string]string{
+		"l": strconv.Itoa(qp.Limit),
+		"o": strconv.Itoa(qp.Offset),
 	}
 }
 
@@ -216,15 +215,15 @@ func (h *Page) Close() {
 // ================================================================
 type PagingQueryParamInterface interface {
 	ListQueryParamInterface
-	Filters() map[string]any
+	Filters() map[string]string
 }
 
 type Paging struct {
 	*Page
-	Previous *string        `json:"previous,omitempty"`
-	Next     *string        `json:"next,omitempty"`
-	endpoint *url.URL       `json:"-"`
-	filters  map[string]any `json:"-"`
+	Previous *string           `json:"previous,omitempty"`
+	Next     *string           `json:"next,omitempty"`
+	endpoint *url.URL          `json:"-"`
+	filters  map[string]string `json:"-"`
 }
 
 func NewPaging(db *sqlx.DB, query string, endpoint *url.URL, params PagingQueryParamInterface) (*Paging, error) {
@@ -255,23 +254,10 @@ func (p *Paging) Select(rows *[]any, args map[string]any) error {
 	return nil
 }
 
-func ToStringDeep(a any) string {
-	val := reflect.ValueOf(a)
-	for val.Kind() == reflect.Ptr && !val.IsNil() {
-		val = val.Elem()
-	}
-
-	if val.Kind() == reflect.Ptr && val.IsNil() {
-		return ""
-	}
-
-	return fmt.Sprintf("%v", val.Interface())
-}
-
 func (p *Paging) setPagingUrl() {
 	q := p.endpoint.Query()
 	for k, v := range p.filters {
-		q.Set(k, ToStringDeep(v))
+		q.Set(k, v)
 	}
 
 	if limit, offset, err := p.GetPrevious(); err == nil {
