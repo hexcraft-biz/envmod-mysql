@@ -56,8 +56,8 @@ func (qp ListQueryParams) Filters() map[string]string {
 }
 
 // ================================================================
-type PageHandler interface {
-	Select(rows *[]any, args map[string]any) error
+type SubsetInterface interface {
+	Select(rows *[]any, args ListArgsInterface) error
 	GetPrevious() (int, int, error)
 	SelectPrevious(rows *[]any) error
 	GetNext() (int, int, error)
@@ -65,7 +65,7 @@ type PageHandler interface {
 	Close()
 }
 
-type Page struct {
+type Subset struct {
 	stmt        *sqlx.NamedStmt
 	args        ListArgsInterface
 	limit       int
@@ -75,13 +75,13 @@ type Page struct {
 	hasNext     bool
 }
 
-func NewPageHandler(db *sqlx.DB, query string) (*Page, error) {
+func NewSubset(db *sqlx.DB, query string) (*Subset, error) {
 	stmt, err := db.PrepareNamed(query)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Page{
+	return &Subset{
 		stmt:        stmt,
 		args:        nil,
 		limit:       0,
@@ -92,7 +92,7 @@ func NewPageHandler(db *sqlx.DB, query string) (*Page, error) {
 	}, nil
 }
 
-func (h *Page) Select(rows any, args ListArgsInterface) error {
+func (h *Subset) Select(rows any, args ListArgsInterface) error {
 	if args != nil {
 		l, o := args.Subset()
 		if h.args == nil {
@@ -117,7 +117,7 @@ func (h *Page) Select(rows any, args ListArgsInterface) error {
 
 	if h.args != nil {
 		// calc previous
-		_, o := args.Subset()
+		_, o := h.args.Subset()
 		if o > 0 {
 			if h.previous = o - h.limit; h.previous < 0 {
 				h.previous = 0
@@ -154,7 +154,7 @@ func (h *Page) Select(rows any, args ListArgsInterface) error {
 }
 
 // ================================================================
-func (h Page) GetPrevious() (int, int, error) {
+func (h Subset) GetPrevious() (int, int, error) {
 	var err error
 	if !h.hasPrevious {
 		err = ErrBOF
@@ -162,7 +162,7 @@ func (h Page) GetPrevious() (int, int, error) {
 	return h.limit, h.previous, err
 }
 
-func (h *Page) SelectPrevious(rows *[]any) error {
+func (h *Subset) SelectPrevious(rows *[]any) error {
 	if h.hasPrevious {
 		h.args.SetOffset(h.previous)
 		return h.Select(rows, h.args)
@@ -172,7 +172,7 @@ func (h *Page) SelectPrevious(rows *[]any) error {
 }
 
 // ================================================================
-func (h Page) GetNext() (int, int, error) {
+func (h Subset) GetNext() (int, int, error) {
 	var err error
 	if !h.hasNext {
 		err = ErrEOF
@@ -180,7 +180,7 @@ func (h Page) GetNext() (int, int, error) {
 	return h.limit, h.next, err
 }
 
-func (h *Page) SelectNext(rows *[]any) error {
+func (h *Subset) SelectNext(rows *[]any) error {
 	if h.hasNext {
 		h.args.SetOffset(h.next)
 		return h.Select(rows, h.args)
@@ -190,7 +190,7 @@ func (h *Page) SelectNext(rows *[]any) error {
 }
 
 // ================================================================
-func (h *Page) Close() {
+func (h *Subset) Close() {
 	if h.stmt != nil {
 		h.stmt.Close()
 	}
@@ -203,7 +203,7 @@ type PagingQueryParamInterface interface {
 }
 
 type Paging struct {
-	*Page
+	*Subset
 	Previous    *string                   `json:"previous,omitempty"`
 	Next        *string                   `json:"next,omitempty"`
 	endpoint    *url.URL                  `json:"-"`
@@ -211,21 +211,21 @@ type Paging struct {
 }
 
 func NewPaging(db *sqlx.DB, query string, endpoint *url.URL, params PagingQueryParamInterface) (*Paging, error) {
-	page, err := NewPageHandler(db, query)
+	subset, err := NewSubset(db, query)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Paging{
-		Page:        page,
+		Subset:      subset,
 		endpoint:    endpoint,
 		queryParams: params,
 	}, nil
 }
 
 func (p *Paging) Select(rows *[]any, args ListArgsInterface) error {
-	defer p.Page.Close()
-	if err := p.Page.Select(rows, args); err != nil {
+	defer p.Subset.Close()
+	if err := p.Subset.Select(rows, args); err != nil {
 		return err
 	}
 
