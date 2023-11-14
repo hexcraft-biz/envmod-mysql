@@ -57,7 +57,7 @@ func (qp ListQueryParams) Filters() map[string]string {
 
 // ================================================================
 type SubsetInterface interface {
-	Select(rows *[]any, args ListArgsInterface) error
+	Select(rows any, args ListArgsInterface) error
 	GetPrevious() (int, int, error)
 	SelectPrevious(rows *[]any) error
 	GetNext() (int, int, error)
@@ -225,7 +225,7 @@ func NewPaging(db *sqlx.DB, query string, endpoint *url.URL, params PagingQueryP
 	}, nil
 }
 
-func (p *Paging) Select(rows *[]any, args ListArgsInterface) error {
+func (p *Paging) Select(rows any, args ListArgsInterface) error {
 	defer p.Subset.Close()
 	if err := p.Subset.Select(rows, args); err != nil {
 		return err
