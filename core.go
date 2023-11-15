@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -112,6 +113,10 @@ func (e *Mysql) Close() {
 //
 // ================================================================
 func (e Mysql) DBInit(sqlDir string, sortedFiles []string) error {
+	if !e.AutoCreateDBSchema {
+		return errors.New("env AutoCreateDBSchema disabled")
+	}
+
 	db, err := e.connectWithMode(true)
 	if err != nil {
 		return err
