@@ -26,32 +26,22 @@ const (
 
 // ================================================================
 type ListArgsInterface interface {
-	Init()
 	Subset() (int, int)
 	SetLimit(int)
 	SetOffset(int)
 }
 
 type ListQueryParams struct {
-	Limit  *int `form:"l" db:"l"`
-	Offset int  `form:"o" binding:"number" db:"o"`
-}
-
-func (qp *ListQueryParams) Init() {
-	if qp.Limit == nil {
-		limit := DefaultLimit
-		qp.Limit = &limit
-	} else if *qp.Limit < 1 {
-		*qp.Limit = 1
-	}
+	Limit  int `form:"l" binding:"number" db:"l"`
+	Offset int `form:"o" binding:"number" db:"o"`
 }
 
 func (qp ListQueryParams) Subset() (int, int) {
-	return *qp.Limit, qp.Offset
+	return qp.Limit, qp.Offset
 }
 
 func (qp *ListQueryParams) SetLimit(limit int) {
-	*qp.Limit = limit
+	qp.Limit = limit
 }
 
 func (qp *ListQueryParams) SetOffset(offset int) {
@@ -64,7 +54,7 @@ func (qp ListQueryParams) SubsetKeys() (string, string) {
 
 func (qp ListQueryParams) Filters() map[string]string {
 	return map[string]string{
-		"l": strconv.Itoa(*qp.Limit),
+		"l": strconv.Itoa(qp.Limit),
 		"o": strconv.Itoa(qp.Offset),
 	}
 }
@@ -107,12 +97,11 @@ func NewSubset(db *sqlx.DB, query string) (*Subset, error) {
 }
 
 func (h *Subset) Select(rows any, args ListArgsInterface) error {
-	args.Init()
 	if args != nil {
 		l, o := args.Subset()
 		if h.args == nil {
 			if l < 1 {
-				h.limit = 1
+				h.limit = DefaultLimit
 			} else {
 				h.limit = l
 			}
