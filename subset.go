@@ -28,8 +28,8 @@ type ListArgsInterface interface {
 }
 
 type ListQueryParams struct {
-	Limit  int `form:"l" binding:"number,min=1" db:"l"`
-	Offset int `form:"o" binding:"number,min=0" db:"o"`
+	Limit  int `form:"l" binding:"number" db:"l"`
+	Offset int `form:"o" binding:"number" db:"o"`
 }
 
 func (qp ListQueryParams) Subset() (int, int) {
