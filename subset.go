@@ -97,22 +97,20 @@ func NewSubset(db *sqlx.DB, query string) (*Subset, error) {
 }
 
 func (h *Subset) Select(rows any, args ListArgsInterface) error {
-	if args != nil {
+	if args != nil && h.args == nil {
 		l, o := args.Subset()
-		if h.args == nil {
-			if l < 1 {
-				h.limit = DefaultLimit
-			} else {
-				h.limit = l
-			}
-			args.SetLimit(h.limit + 1)
-
-			if o < 0 {
-				args.SetOffset(0)
-			}
-
-			h.args = args
+		if l < 1 {
+			h.limit = DefaultLimit
+		} else {
+			h.limit = l
 		}
+		args.SetLimit(h.limit + 1)
+
+		if o < 0 {
+			args.SetOffset(0)
+		}
+
+		h.args = args
 	}
 
 	if err := h.stmt.Select(rows, args); err != nil {
@@ -166,10 +164,10 @@ func (h Subset) GetPrevious() (int, int, error) {
 	return h.limit, h.previous, err
 }
 
-func (h *Subset) SelectPrevious(rows *[]any) error {
+func (h *Subset) MoveBackward() error {
 	if h.hasPrevious {
 		h.args.SetOffset(h.previous)
-		return h.Select(rows, h.args)
+		return nil
 	}
 
 	return ErrBOF
@@ -184,10 +182,10 @@ func (h Subset) GetNext() (int, int, error) {
 	return h.limit, h.next, err
 }
 
-func (h *Subset) SelectNext(rows *[]any) error {
+func (h *Subset) MoveForward() error {
 	if h.hasNext {
 		h.args.SetOffset(h.next)
-		return h.Select(rows, h.args)
+		return nil
 	}
 
 	return ErrEOF
