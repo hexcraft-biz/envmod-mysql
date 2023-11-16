@@ -63,9 +63,9 @@ func (qp ListQueryParams) Filters() map[string]string {
 type SubsetInterface interface {
 	Select(rows any, args ListArgsInterface) error
 	GetPrevious() (int, int, error)
-	SelectPrevious(rows *[]any) error
 	GetNext() (int, int, error)
-	SelectNext(rows *[]any) error
+	MoveBackward() error
+	MoveForward() error
 	Close()
 }
 
@@ -164,6 +164,14 @@ func (h Subset) GetPrevious() (int, int, error) {
 	return h.limit, h.previous, err
 }
 
+func (h Subset) GetNext() (int, int, error) {
+	var err error
+	if !h.hasNext {
+		err = ErrEOF
+	}
+	return h.limit, h.next, err
+}
+
 func (h *Subset) MoveBackward() error {
 	if h.hasPrevious {
 		h.args.SetOffset(h.previous)
@@ -171,15 +179,6 @@ func (h *Subset) MoveBackward() error {
 	}
 
 	return ErrBOF
-}
-
-// ================================================================
-func (h Subset) GetNext() (int, int, error) {
-	var err error
-	if !h.hasNext {
-		err = ErrEOF
-	}
-	return h.limit, h.next, err
 }
 
 func (h *Subset) MoveForward() error {
