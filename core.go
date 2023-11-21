@@ -1,7 +1,7 @@
 package mysql
 
 import (
-	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,12 +17,12 @@ import (
 // ================================================================
 type Mysql struct {
 	*sqlx.DB
-	AutoCreateDBSchema bool
-	Type               string
-	Host               string
-	Port               string
-	ModeInit           *MysqlModeSettings
-	ModeDefault        *MysqlModeSettings
+	Initdb      bool
+	Type        string
+	Host        string
+	Port        string
+	ModeInit    *MysqlModeSettings
+	ModeDefault *MysqlModeSettings
 }
 
 type MysqlModeSettings struct {
@@ -36,14 +36,17 @@ type MysqlModeSettings struct {
 	IdleTime int
 }
 
+const (
+	FlagInitDB            = "initdb"
+	FlagInitDBDescription = "To initialize database"
+)
+
 // ================================================================
 //
 // ================================================================
 func New() (*Mysql, error) {
-	autoCreateDBSchema, err := strconv.ParseBool(os.Getenv("AUTO_CREATE_DB_SCHEMA"))
-	if err != nil {
-		return nil, err
-	}
+
+	initdb := flag.Bool(FlagInitDB, false, FlagInitDBDescription)
 
 	maxOpen, err := strconv.Atoi(os.Getenv("DB_MAX_OPEN"))
 	if err != nil {
@@ -66,10 +69,10 @@ func New() (*Mysql, error) {
 	}
 
 	return &Mysql{
-		AutoCreateDBSchema: autoCreateDBSchema,
-		Type:               os.Getenv("DB_TYPE"),
-		Host:               os.Getenv("DB_HOST"),
-		Port:               os.Getenv("DB_PORT"),
+		Initdb: *initdb,
+		Type:   os.Getenv("DB_TYPE"),
+		Host:   os.Getenv("DB_HOST"),
+		Port:   os.Getenv("DB_PORT"),
 		ModeInit: &MysqlModeSettings{
 			User:     os.Getenv("DB_INIT_USER"),
 			Password: os.Getenv("DB_INIT_PASSWORD"),
@@ -113,8 +116,8 @@ func (e *Mysql) Close() {
 //
 // ================================================================
 func (e Mysql) DBInit(sqlDir string, sortedFiles []string) error {
-	if !e.AutoCreateDBSchema {
-		return errors.New("env AutoCreateDBSchema disabled")
+	if !e.Initdb {
+		panic("missing flag")
 	}
 
 	db, err := e.connectWithMode(true)
