@@ -1,7 +1,6 @@
 package mysql
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,7 +16,6 @@ import (
 // ================================================================
 type Mysql struct {
 	*sqlx.DB
-	InitMysql   bool
 	Type        string
 	Host        string
 	Port        string
@@ -36,17 +34,10 @@ type MysqlModeSettings struct {
 	IdleTime int
 }
 
-const (
-	FlagInitMysql            = "initmysql"
-	FlagInitMysqlDescription = "To initialize database"
-)
-
 // ================================================================
 //
 // ================================================================
 func New() (*Mysql, error) {
-
-	initMysql := flag.Bool(FlagInitMysql, false, FlagInitMysqlDescription)
 
 	maxOpen, err := strconv.Atoi(os.Getenv("DB_MAX_OPEN"))
 	if err != nil {
@@ -69,10 +60,9 @@ func New() (*Mysql, error) {
 	}
 
 	return &Mysql{
-		InitMysql: *initMysql,
-		Type:      os.Getenv("DB_TYPE"),
-		Host:      os.Getenv("DB_HOST"),
-		Port:      os.Getenv("DB_PORT"),
+		Type: os.Getenv("DB_TYPE"),
+		Host: os.Getenv("DB_HOST"),
+		Port: os.Getenv("DB_PORT"),
 		ModeInit: &MysqlModeSettings{
 			User:     os.Getenv("DB_INIT_USER"),
 			Password: os.Getenv("DB_INIT_PASSWORD"),
@@ -116,10 +106,6 @@ func (e *Mysql) Close() {
 //
 // ================================================================
 func (e Mysql) DBInit(sqlDir string, sortedFiles []string) error {
-	if !e.InitMysql {
-		panic("missing flag")
-	}
-
 	db, err := e.connectWithMode(true)
 	if err != nil {
 		return err
