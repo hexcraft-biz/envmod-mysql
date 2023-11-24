@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 // ================================================================
 type Mysql struct {
 	*sqlx.DB
+	init        *bool
 	Type        string
 	Host        string
 	Port        string
@@ -34,11 +36,15 @@ type MysqlModeSettings struct {
 	IdleTime int
 }
 
+const (
+	FlagInit            = "initmysql"
+	FlagInitDescription = "To initialize database"
+)
+
 // ================================================================
 //
 // ================================================================
 func New() (*Mysql, error) {
-
 	maxOpen, err := strconv.Atoi(os.Getenv("DB_MAX_OPEN"))
 	if err != nil {
 		return nil, err
@@ -60,6 +66,7 @@ func New() (*Mysql, error) {
 	}
 
 	return &Mysql{
+		init: flag.Bool(FlagInit, false, FlagInitDescription),
 		Type: os.Getenv("DB_TYPE"),
 		Host: os.Getenv("DB_HOST"),
 		Port: os.Getenv("DB_PORT"),
@@ -87,8 +94,10 @@ func New() (*Mysql, error) {
 }
 
 // ================================================================
-//
-// ================================================================
+func (e Mysql) IsInit() bool {
+	return *e.init
+}
+
 func (e *Mysql) Open() error {
 	var err error
 	e.Close()
