@@ -17,7 +17,7 @@ import (
 // ================================================================
 type Mysql struct {
 	*sqlx.DB
-	init        *bool
+	Init        *bool
 	Type        string
 	Host        string
 	Port        string
@@ -66,7 +66,7 @@ func New() (*Mysql, error) {
 	}
 
 	return &Mysql{
-		init: flag.Bool(FlagInit, false, FlagInitDescription),
+		Init: flag.Bool(FlagInit, false, FlagInitDescription),
 		Type: os.Getenv("DB_TYPE"),
 		Host: os.Getenv("DB_HOST"),
 		Port: os.Getenv("DB_PORT"),
@@ -94,10 +94,6 @@ func New() (*Mysql, error) {
 }
 
 // ================================================================
-func (e Mysql) IsInit() bool {
-	return *e.init
-}
-
 func (e *Mysql) Open() error {
 	var err error
 	e.Close()
@@ -114,22 +110,22 @@ func (e *Mysql) Close() {
 // ================================================================
 //
 // ================================================================
-func (e Mysql) DBInit(sqlDir string, sortedFiles []string) error {
+func (e Mysql) DBInit(sqlDir string, sortedFiles []string) {
 	db, err := e.connectWithMode(true)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	defer db.Close()
 
 	hasDB := false
 	if err := db.Get(&hasDB, `SELECT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?);`, e.ModeDefault.Name); err != nil {
-		return err
+		panic(err)
 	} else if hasDB {
-		return nil
+		panic("mysql database exists")
 	}
 
 	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS `" + e.ModeDefault.Name + "` COLLATE 'utf8mb4_unicode_ci' CHARACTER SET 'utf8mb4';"); err != nil {
-		return err
+		panic(err)
 	} else {
 		db.Exec("USE `" + e.ModeDefault.Name + "`;")
 	}
@@ -153,7 +149,9 @@ func (e Mysql) DBInit(sqlDir string, sortedFiles []string) error {
 		})
 	}
 
-	return err
+	if err != nil {
+		panic(err)
+	}
 }
 
 // ================================================================
