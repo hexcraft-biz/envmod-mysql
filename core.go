@@ -17,7 +17,7 @@ import (
 // ================================================================
 type Mysql struct {
 	*sqlx.DB
-	Init        *bool
+	init        *bool
 	Type        string
 	Host        string
 	Port        string
@@ -66,7 +66,7 @@ func New() (*Mysql, error) {
 	}
 
 	return &Mysql{
-		Init: flag.Bool(FlagInit, false, FlagInitDescription),
+		init: flag.Bool(FlagInit, false, FlagInitDescription),
 		Type: os.Getenv("DB_TYPE"),
 		Host: os.Getenv("DB_HOST"),
 		Port: os.Getenv("DB_PORT"),
@@ -94,6 +94,10 @@ func New() (*Mysql, error) {
 }
 
 // ================================================================
+func (e Mysql) IsInit() bool {
+	return *e.init
+}
+
 func (e *Mysql) Open() error {
 	var err error
 	e.Close()
@@ -111,6 +115,10 @@ func (e *Mysql) Close() {
 //
 // ================================================================
 func (e Mysql) DBInit(sqlDir string, sortedFiles []string) {
+	if !*e.init {
+		panic("Not mysql init mode")
+	}
+
 	db, err := e.connectWithMode(true)
 	if err != nil {
 		panic(err)
