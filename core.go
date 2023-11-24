@@ -116,7 +116,7 @@ func (e *Mysql) Close() {
 // ================================================================
 func (e Mysql) DBInit(sqlDir string, sortedFiles []string) {
 	if !*e.init {
-		panic("Not mysql init mode")
+		panic("not init mode")
 	}
 
 	db, err := e.connectWithMode(true)
