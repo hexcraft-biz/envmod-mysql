@@ -129,7 +129,7 @@ func (e Mysql) DBInit(sqlDir string, sortedFiles []string) {
 	if err := db.Get(&hasDB, `SELECT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?);`, e.ModeDefault.Name); err != nil {
 		panic(err)
 	} else if hasDB {
-		panic("mysql database exists")
+		return
 	}
 
 	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS `" + e.ModeDefault.Name + "` COLLATE 'utf8mb4_unicode_ci' CHARACTER SET 'utf8mb4';"); err != nil {
