@@ -29,6 +29,7 @@ type ListArgsInterface interface {
 	Subset() (int, int)
 	SetLimit(int)
 	SetOffset(int)
+	GetNamedArgs() map[string]any
 }
 
 type ListQueryParams struct {
@@ -46,6 +47,13 @@ func (qp *ListQueryParams) SetLimit(limit int) {
 
 func (qp *ListQueryParams) SetOffset(offset int) {
 	qp.Offset = offset
+}
+
+func (qp ListQueryParams) GetNamedArgs() map[string]any {
+	return map[string]any{
+		"l": qp.Limit,
+		"o": qp.Offset,
+	}
 }
 
 func (qp ListQueryParams) SubsetKeys() (string, string) {
@@ -113,7 +121,7 @@ func (h *Subset) Select(rows any, args ListArgsInterface) error {
 		h.args = args
 	}
 
-	if err := h.stmt.Select(rows, args); err != nil {
+	if err := h.stmt.Select(rows, args.GetNamedArgs()); err != nil {
 		return err
 	}
 
