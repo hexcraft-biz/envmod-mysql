@@ -226,7 +226,7 @@ func NewPaging(db *sqlx.DB, query string, endpoint *url.URL, params PagingQueryP
 		return nil, err
 	}
 
-	endpoint.RawQuery = ""
+	// endpoint.RawQuery = ""
 
 	return &Paging{
 		Subset:      subset,
