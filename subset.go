@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -246,7 +247,9 @@ func (p *Paging) Select(rows any, args ListArgsInterface) error {
 	delete(filters, keyLimit)
 	delete(filters, keyOffset)
 
+	fmt.Println("from modsql", q)
 	for k, v := range filters {
+		fmt.Println("from modsql", k, v)
 		q.Set(k, v)
 	}
 
