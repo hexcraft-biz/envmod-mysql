@@ -239,7 +239,6 @@ func (p *Paging) Select(rows any, args ListArgsInterface) error {
 	}
 
 	q := p.endpoint.Query()
-	filters := p.queryParams.Filters()
 	keyLimit, keyOffset := p.queryParams.SubsetKeys()
 
 	if limit, offset, err := p.GetPrevious(); err == nil {
