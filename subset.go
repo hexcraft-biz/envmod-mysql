@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -226,8 +225,6 @@ func NewPaging(db *sqlx.DB, query string, endpoint *url.URL, params PagingQueryP
 		return nil, err
 	}
 
-	// endpoint.RawQuery = ""
-
 	return &Paging{
 		Subset:      subset,
 		endpoint:    endpoint,
@@ -244,14 +241,6 @@ func (p *Paging) Select(rows any, args ListArgsInterface) error {
 	q := p.endpoint.Query()
 	filters := p.queryParams.Filters()
 	keyLimit, keyOffset := p.queryParams.SubsetKeys()
-	delete(filters, keyLimit)
-	delete(filters, keyOffset)
-
-	fmt.Println("from modsql", q)
-	for k, v := range filters {
-		fmt.Println("from modsql", k, v)
-		q.Set(k, v)
-	}
 
 	if limit, offset, err := p.GetPrevious(); err == nil {
 		q.Set(keyLimit, strconv.Itoa(limit))
