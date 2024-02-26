@@ -174,13 +174,22 @@ func (e Mysql) connectWithMode(isInit bool) (*sqlx.DB, error) {
 		ms = e.ModeDefault
 	}
 
-	if db, err := sqlx.Open(e.Type, fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", ms.User, ms.Password, e.Host, e.Port, ms.Name, ms.Params)); err != nil {
+	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", ms.User, ms.Password, e.Host, e.Port, ms.Name, ms.Params)
+	db, err := sqlx.Open(e.Type, connectionString)
+	if err != nil {
 		return nil, err
-	} else {
-		db.SetMaxOpenConns(ms.MaxOpen)
-		db.SetMaxIdleConns(ms.MaxIdle)
-		db.SetConnMaxLifetime(time.Duration(ms.LifeTime) * time.Second)
-		db.SetConnMaxIdleTime(time.Duration(ms.IdleTime) * time.Second)
-		return db, nil
 	}
+
+	db.SetMaxOpenConns(ms.MaxOpen)
+	db.SetMaxIdleConns(ms.MaxIdle)
+	db.SetConnMaxLifetime(time.Duration(ms.LifeTime) * time.Second)
+	db.SetConnMaxIdleTime(time.Duration(ms.IdleTime) * time.Second)
+
+	err = db.Ping()
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+
+	return db, nil
 }
