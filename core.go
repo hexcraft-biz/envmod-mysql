@@ -1,11 +1,9 @@
 package mysql
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -18,7 +16,6 @@ import (
 // ================================================================
 type Mysql struct {
 	*sqlx.DB
-	init          *bool
 	Type          string
 	Host          string
 	Port          string
@@ -69,7 +66,6 @@ func New() (*Mysql, error) {
 	}
 
 	return &Mysql{
-		init:          flag.Bool(FlagInit, false, FlagInitDescription),
 		Type:          os.Getenv("DB_TYPE"),
 		Host:          os.Getenv("DB_HOST"),
 		Port:          os.Getenv("DB_PORT"),
@@ -126,10 +122,6 @@ func (e Mysql) FlywayClean() error {
 }
 
 // ================================================================
-func (e Mysql) IsInit() bool {
-	return *e.init
-}
-
 func (e *Mysql) Open() error {
 	var err error
 	e.Close()
@@ -146,52 +138,25 @@ func (e *Mysql) Close() {
 // ================================================================
 //
 // ================================================================
-func (e Mysql) DBInit(sqlDir string, sortedFiles []string) {
-	if !*e.init {
-		panic("not init mode")
-	}
-
+func (e Mysql) CreateDatabase() error {
 	db, err := e.connectWithMode(true)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer db.Close()
 
 	hasDB := false
 	if err := db.Get(&hasDB, `SELECT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?);`, e.Name); err != nil {
-		panic(err)
+		return err
 	} else if hasDB {
-		return
+		return nil
 	}
 
 	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS `" + e.Name + "` COLLATE 'utf8mb4_unicode_ci' CHARACTER SET 'utf8mb4';"); err != nil {
-		panic(err)
-	} else {
-		db.Exec("USE `" + e.Name + "`;")
+		return err
 	}
 
-	if len(sortedFiles) > 0 {
-		for i := range sortedFiles {
-			if _, err = sqlx.LoadFile(db, filepath.Join(sqlDir, sortedFiles[i])); err != nil {
-				break
-			}
-		}
-	} else {
-		err = filepath.Walk(sqlDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			} else if info.IsDir() || filepath.Ext(path) != ".sql" {
-				return nil
-			}
-
-			_, err = sqlx.LoadFile(db, path)
-			return err
-		})
-	}
-
-	if err != nil {
-		panic(err)
-	}
+	return nil
 }
 
 // ================================================================
