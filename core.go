@@ -18,14 +18,15 @@ import (
 // ================================================================
 type Mysql struct {
 	*sqlx.DB
-	init        *bool
-	Type        string
-	Host        string
-	Port        string
-	Name        string
-	DirSqls     string
-	ModeInit    *MysqlModeSettings
-	ModeDefault *MysqlModeSettings
+	init          *bool
+	Type          string
+	Host          string
+	Port          string
+	Name          string
+	DirSqls       string
+	FlywayBinPath string
+	ModeInit      *MysqlModeSettings
+	ModeDefault   *MysqlModeSettings
 }
 
 type MysqlModeSettings struct {
@@ -68,12 +69,13 @@ func New() (*Mysql, error) {
 	}
 
 	return &Mysql{
-		init:    flag.Bool(FlagInit, false, FlagInitDescription),
-		Type:    os.Getenv("DB_TYPE"),
-		Host:    os.Getenv("DB_HOST"),
-		Port:    os.Getenv("DB_PORT"),
-		Name:    os.Getenv("DB_NAME"),
-		DirSqls: os.Getenv("DIR_SQLS"),
+		init:          flag.Bool(FlagInit, false, FlagInitDescription),
+		Type:          os.Getenv("DB_TYPE"),
+		Host:          os.Getenv("DB_HOST"),
+		Port:          os.Getenv("DB_PORT"),
+		Name:          os.Getenv("DB_NAME"),
+		DirSqls:       os.Getenv("DIR_SQLS"),
+		FlywayBinPath: os.Getenv("FLYWAY_BIN_PATH"),
 		ModeInit: &MysqlModeSettings{
 			User:     os.Getenv("DB_INIT_USER"),
 			Password: os.Getenv("DB_INIT_PASSWORD"),
@@ -97,7 +99,7 @@ func New() (*Mysql, error) {
 
 func (e Mysql) FlywayMigrate() error {
 	cmd := exec.Command(
-		"flyway",
+		e.FlywayBinPath,
 		"-url=jdbc:"+fmt.Sprintf("mysql://%s:%s/%s", e.Host, e.Port, e.Name),
 		"-user="+e.ModeInit.User,
 		"-password="+e.ModeInit.Password,
@@ -111,7 +113,7 @@ func (e Mysql) FlywayMigrate() error {
 
 func (e Mysql) FlywayClean() error {
 	cmd := exec.Command(
-		"flyway",
+		e.FlywayBinPath,
 		"-url=jdbc:"+fmt.Sprintf("mysql://%s:%s/%s", e.Host, e.Port, e.Name),
 		"-user="+e.ModeInit.User,
 		"-password="+e.ModeInit.Password,
