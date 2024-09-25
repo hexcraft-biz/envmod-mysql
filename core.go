@@ -36,11 +36,6 @@ type MysqlModeSettings struct {
 	IdleTime int
 }
 
-const (
-	FlagInit            = "initmysql"
-	FlagInitDescription = "To initialize database"
-)
-
 // ================================================================
 //
 // ================================================================
