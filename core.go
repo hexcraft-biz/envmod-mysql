@@ -21,6 +21,7 @@ type Mysql struct {
 	Type        string
 	Host        string
 	Port        string
+	DirSqls     string
 	ModeInit    *MysqlModeSettings
 	ModeDefault *MysqlModeSettings
 }
@@ -66,10 +67,11 @@ func New() (*Mysql, error) {
 	}
 
 	return &Mysql{
-		init: flag.Bool(FlagInit, false, FlagInitDescription),
-		Type: os.Getenv("DB_TYPE"),
-		Host: os.Getenv("DB_HOST"),
-		Port: os.Getenv("DB_PORT"),
+		init:    flag.Bool(FlagInit, false, FlagInitDescription),
+		Type:    os.Getenv("DB_TYPE"),
+		Host:    os.Getenv("DB_HOST"),
+		Port:    os.Getenv("DB_PORT"),
+		DirSqls: os.Getenv("DIR_SQLS"),
 		ModeInit: &MysqlModeSettings{
 			User:     os.Getenv("DB_INIT_USER"),
 			Password: os.Getenv("DB_INIT_PASSWORD"),
