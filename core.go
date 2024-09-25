@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -21,6 +22,7 @@ type Mysql struct {
 	Type        string
 	Host        string
 	Port        string
+	Name        string
 	DirSqls     string
 	ModeInit    *MysqlModeSettings
 	ModeDefault *MysqlModeSettings
@@ -29,7 +31,6 @@ type Mysql struct {
 type MysqlModeSettings struct {
 	User     string
 	Password string
-	Name     string
 	Params   string
 	MaxOpen  int
 	MaxIdle  int
@@ -71,11 +72,11 @@ func New() (*Mysql, error) {
 		Type:    os.Getenv("DB_TYPE"),
 		Host:    os.Getenv("DB_HOST"),
 		Port:    os.Getenv("DB_PORT"),
+		Name:    os.Getenv("DB_NAME"),
 		DirSqls: os.Getenv("DIR_SQLS"),
 		ModeInit: &MysqlModeSettings{
 			User:     os.Getenv("DB_INIT_USER"),
 			Password: os.Getenv("DB_INIT_PASSWORD"),
-			Name:     "",
 			Params:   os.Getenv("DB_INIT_PARAMS"),
 			MaxOpen:  1,
 			MaxIdle:  1,
@@ -85,7 +86,6 @@ func New() (*Mysql, error) {
 		ModeDefault: &MysqlModeSettings{
 			User:     os.Getenv("DB_USER"),
 			Password: os.Getenv("DB_PASSWORD"),
-			Name:     os.Getenv("DB_NAME"),
 			Params:   os.Getenv("DB_PARAMS"),
 			MaxOpen:  maxOpen,
 			MaxIdle:  maxIdle,
@@ -93,6 +93,34 @@ func New() (*Mysql, error) {
 			IdleTime: idleTime,
 		},
 	}, nil
+}
+
+func (e Mysql) FlywayMigrate() error {
+	cmd := exec.Command(
+		"flyway",
+		"-url=jdbc:"+fmt.Sprintf("mysql://%s:%s/%s", e.Host, e.Port, e.Name),
+		"-user="+e.ModeInit.User,
+		"-password="+e.ModeInit.Password,
+		"-locations=filesystem:"+e.DirSqls,
+		"migrate",
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func (e Mysql) FlywayClean() error {
+	cmd := exec.Command(
+		"flyway",
+		"-url=jdbc:"+fmt.Sprintf("mysql://%s:%s/%s", e.Host, e.Port, e.Name),
+		"-user="+e.ModeInit.User,
+		"-password="+e.ModeInit.Password,
+		"-locations=filesystem:"+e.DirSqls,
+		"clean",
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 // ================================================================
@@ -128,16 +156,16 @@ func (e Mysql) DBInit(sqlDir string, sortedFiles []string) {
 	defer db.Close()
 
 	hasDB := false
-	if err := db.Get(&hasDB, `SELECT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?);`, e.ModeDefault.Name); err != nil {
+	if err := db.Get(&hasDB, `SELECT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?);`, e.Name); err != nil {
 		panic(err)
 	} else if hasDB {
 		return
 	}
 
-	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS `" + e.ModeDefault.Name + "` COLLATE 'utf8mb4_unicode_ci' CHARACTER SET 'utf8mb4';"); err != nil {
+	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS `" + e.Name + "` COLLATE 'utf8mb4_unicode_ci' CHARACTER SET 'utf8mb4';"); err != nil {
 		panic(err)
 	} else {
-		db.Exec("USE `" + e.ModeDefault.Name + "`;")
+		db.Exec("USE `" + e.Name + "`;")
 	}
 
 	if len(sortedFiles) > 0 {
@@ -176,7 +204,7 @@ func (e Mysql) connectWithMode(isInit bool) (*sqlx.DB, error) {
 		ms = e.ModeDefault
 	}
 
-	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", ms.User, ms.Password, e.Host, e.Port, ms.Name, ms.Params)
+	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", ms.User, ms.Password, e.Host, e.Port, e.Name, ms.Params)
 	db, err := sqlx.Open(e.Type, connectionString)
 	if err != nil {
 		return nil, err
