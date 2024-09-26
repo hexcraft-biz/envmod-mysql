@@ -125,15 +125,20 @@ func (e Mysql) CreateDatabase() error {
 //
 // ================================================================
 func (e Mysql) connectWithMode(isInit bool) (*sqlx.DB, error) {
-	var ms *MysqlModeSettings
+	var (
+		ms               *MysqlModeSettings
+		connectionString string
+	)
+
 	switch isInit {
 	case true:
 		ms = e.ModeInit
+		connectionString = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", ms.User, ms.Password, e.Host, e.Port, "", ms.Params)
 	default:
 		ms = e.ModeDefault
+		connectionString = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", ms.User, ms.Password, e.Host, e.Port, e.Name, ms.Params)
 	}
 
-	connectionString := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", ms.User, ms.Password, e.Host, e.Port, e.Name, ms.Params)
 	db, err := sqlx.Open(e.Type, connectionString)
 	if err != nil {
 		return nil, err
