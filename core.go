@@ -3,7 +3,6 @@ package mysql
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strconv"
 	"time"
 
@@ -16,14 +15,12 @@ import (
 // ================================================================
 type Mysql struct {
 	*sqlx.DB
-	Type          string
-	Host          string
-	Port          string
-	Name          string
-	DirSqls       string
-	FlywayBinPath string
-	ModeInit      *MysqlModeSettings
-	ModeDefault   *MysqlModeSettings
+	Type        string
+	Host        string
+	Port        string
+	Name        string
+	ModeInit    *MysqlModeSettings
+	ModeDefault *MysqlModeSettings
 }
 
 type MysqlModeSettings struct {
@@ -61,12 +58,10 @@ func New() (*Mysql, error) {
 	}
 
 	return &Mysql{
-		Type:          os.Getenv("DB_TYPE"),
-		Host:          os.Getenv("DB_HOST"),
-		Port:          os.Getenv("DB_PORT"),
-		Name:          os.Getenv("DB_NAME"),
-		DirSqls:       os.Getenv("DIR_SQLS"),
-		FlywayBinPath: os.Getenv("FLYWAY_BIN_PATH"),
+		Type: os.Getenv("DB_TYPE"),
+		Host: os.Getenv("DB_HOST"),
+		Port: os.Getenv("DB_PORT"),
+		Name: os.Getenv("DB_NAME"),
 		ModeInit: &MysqlModeSettings{
 			User:     os.Getenv("DB_INIT_USER"),
 			Password: os.Getenv("DB_INIT_PASSWORD"),
@@ -86,34 +81,6 @@ func New() (*Mysql, error) {
 			IdleTime: idleTime,
 		},
 	}, nil
-}
-
-func (e Mysql) FlywayMigrate() error {
-	cmd := exec.Command(
-		e.FlywayBinPath,
-		"-url=jdbc:"+fmt.Sprintf("mysql://%s:%s/%s", e.Host, e.Port, e.Name),
-		"-user="+e.ModeInit.User,
-		"-password="+e.ModeInit.Password,
-		"-locations=filesystem:"+e.DirSqls,
-		"migrate",
-	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-func (e Mysql) FlywayClean() error {
-	cmd := exec.Command(
-		e.FlywayBinPath,
-		"-url=jdbc:"+fmt.Sprintf("mysql://%s:%s/%s", e.Host, e.Port, e.Name),
-		"-user="+e.ModeInit.User,
-		"-password="+e.ModeInit.Password,
-		"-locations=filesystem:"+e.DirSqls,
-		"clean",
-	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
 }
 
 // ================================================================
