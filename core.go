@@ -87,7 +87,7 @@ func New() (*Mysql, error) {
 func (e *Mysql) Open() error {
 	var err error
 	e.Close()
-	e.DB, err = e.connectWithMode(false)
+	e.DB, err = e.ConnectWithMode("")
 	return err
 }
 
@@ -100,38 +100,14 @@ func (e *Mysql) Close() {
 // ================================================================
 //
 // ================================================================
-func (e Mysql) CreateDatabase() error {
-	db, err := e.connectWithMode(true)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	hasDB := false
-	if err := db.Get(&hasDB, `SELECT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?);`, e.Name); err != nil {
-		return err
-	} else if hasDB {
-		return nil
-	}
-
-	if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS `" + e.Name + "` COLLATE 'utf8mb4_unicode_ci' CHARACTER SET 'utf8mb4';"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// ================================================================
-//
-// ================================================================
-func (e Mysql) connectWithMode(isInit bool) (*sqlx.DB, error) {
+func (e Mysql) ConnectWithMode(mode string) (*sqlx.DB, error) {
 	var (
 		ms               *MysqlModeSettings
 		connectionString string
 	)
 
-	switch isInit {
-	case true:
+	switch mode {
+	case "init":
 		ms = e.ModeInit
 		connectionString = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s", ms.User, ms.Password, e.Host, e.Port, "", ms.Params)
 	default:
