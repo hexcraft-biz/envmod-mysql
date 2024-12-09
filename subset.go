@@ -213,8 +213,8 @@ type PagingQueryParamInterface interface {
 
 type Paging struct {
 	*Subset
-	Previous    *string                   `json:"previous,omitempty"`
-	Next        *string                   `json:"next,omitempty"`
+	Previous    *string                   `json:"previous,omitempty" example:"https://myhostname/foo/bar?l=32&o=0"`
+	Next        *string                   `json:"next,omitempty" example:"https://myhostname/foo/bar?l=32&o=64"`
 	endpoint    *url.URL                  `json:"-"`
 	queryParams PagingQueryParamInterface `json:"-"`
 }
